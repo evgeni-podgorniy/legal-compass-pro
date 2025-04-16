@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import ChatInterface from '@/components/ChatInterface';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageSquare, HelpCircle, Info, Briefcase, Users, Car, Scale, Landmark } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Chat = () => {
   const [searchParams] = useSearchParams();
@@ -95,6 +96,7 @@ const Chat = () => {
                   <div className="text-sm text-muted-foreground">
                     <p>В случае сложного юридического вопроса, требующего индивидуального подхода, рекомендуем обратиться к профессиональному юристу.</p>
                     <p className="mt-2">Ответы бота основаны на общих положениях законодательства РФ и могут не учитывать все детали вашей ситуации.</p>
+                    <p className="mt-2">Для использования чата требуется API-ключ <a href="https://www.perplexity.ai/" target="_blank" rel="noopener noreferrer" className="text-legal-primary underline">Perplexity AI</a>.</p>
                   </div>
                 </CardContent>
               </Card>

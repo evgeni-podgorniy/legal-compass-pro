@@ -2,9 +2,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Bot } from 'lucide-react';
+import { Send, Bot, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+// Если вы хотите использовать API непосредственно в приложении,
+// вы можете использовать переменную окружения Vite
+// Для этого создайте файл .env в корне проекта с VITE_PERPLEXITY_API_KEY=ваш_ключ
+const PERPLEXITY_API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY || '';
 
 interface Message {
   id: string;
@@ -27,6 +33,9 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(!PERPLEXITY_API_KEY);
+  const [apiKey, setApiKey] = useState(PERPLEXITY_API_KEY);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -44,7 +53,34 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const saveApiKey = () => {
+    if (apiKeyInput.trim()) {
+      setApiKey(apiKeyInput.trim());
+      setShowApiKeyInput(false);
+      localStorage.setItem('perplexityApiKey', apiKeyInput.trim());
+      toast({
+        title: "API ключ сохранен",
+        description: "Ваш API ключ был сохранен в локальном хранилище браузера."
+      });
+    }
+  };
+
+  useEffect(() => {
+    // Попытка восстановления API ключа из localStorage при загрузке
+    const savedApiKey = localStorage.getItem('perplexityApiKey');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      setShowApiKeyInput(false);
+    }
+  }, []);
+
   const getGPTResponse = async (message: string) => {
+    // Проверяем наличие API ключа
+    if (!apiKey) {
+      setShowApiKeyInput(true);
+      return 'Пожалуйста, введите ваш API ключ Perplexity AI для использования чата.';
+    }
+
     // Правовой контекст для GPT
     const legalContext = `Ты — профессиональный юрист-консультант. Отвечай на вопросы, основываясь на законодательстве РФ. 
     Давай четкие, структурированные ответы с указанием конкретных статей законов. Используй простой язык, понятный неюристам.`;
@@ -55,7 +91,7 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -76,14 +112,22 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
       });
 
       if (!response.ok) {
-        throw new Error('Ошибка при получении ответа');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error:', errorData);
+        
+        if (response.status === 401) {
+          setShowApiKeyInput(true);
+          return 'Ошибка аутентификации. Пожалуйста, проверьте ваш API ключ Perplexity AI.';
+        }
+        
+        throw new Error(`Ошибка API: ${response.status}`);
       }
 
       const data = await response.json();
       return data.choices[0].message.content;
     } catch (error) {
       console.error('Error:', error);
-      return 'Извините, произошла ошибка при обработке вашего запроса. Попробуйте переформулировать вопрос.';
+      return 'Извините, произошла ошибка при обработке вашего запроса. Попробуйте переформулировать вопрос или проверьте ваше интернет-соединение.';
     }
   };
 
@@ -132,6 +176,29 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-13rem)] border rounded-lg overflow-hidden bg-gray-50">
+      {showApiKeyInput && (
+        <div className="p-4 bg-white border-b">
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Для использования чата необходимо добавить API ключ Perplexity AI. Ключ будет сохранен только в локальном хранилище вашего браузера.
+            </AlertDescription>
+          </Alert>
+          <div className="flex gap-2">
+            <Input 
+              type="password"
+              placeholder="Введите ваш API ключ Perplexity AI"
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={saveApiKey} disabled={!apiKeyInput.trim()}>
+              Сохранить
+            </Button>
+          </div>
+        </div>
+      )}
+      
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
           <div
@@ -171,9 +238,9 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           className="flex-1 mr-2"
-          disabled={isLoading}
+          disabled={isLoading || showApiKeyInput}
         />
-        <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+        <Button type="submit" size="icon" disabled={isLoading || !input.trim() || showApiKeyInput}>
           <Send className="h-4 w-4" />
         </Button>
       </form>
