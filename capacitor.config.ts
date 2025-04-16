@@ -15,7 +15,10 @@ const config: CapacitorConfig = {
       keystorePassword: null,
       keystoreAlias: null,
       keystoreAliasPassword: null,
-    }
+    },
+    path: null, // Позволяет Capacitor автоматически определить путь
+    minSdkVersion: 22, // Минимальная поддерживаемая версия Android
+    allowMixedContent: true, // Разрешает смешанный контент
   }
 };
 
