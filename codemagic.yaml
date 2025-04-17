@@ -8,8 +8,23 @@ workflows:
         JAVA_VERSION: 17
     scripts:
       - echo "Начинаем сборку проекта"
+      - echo "Проверка текущей директории"
+      - pwd
+      - ls -la
+      - echo "Проверка директории android"
+      - mkdir -p android
+      - cd android
+      - ls -la
+      - cd ..
+      - echo "Инициализация Capacitor Android"
+      - npx cap add android || true
+      - echo "Сборка веб-приложения"
+      - npm ci
+      - npm run build
+      - echo "Синхронизация с Android"
+      - npx cap sync android
+      - cd android
       - chmod +x ./gradlew
       - ./gradlew clean assembleDebug
     artifacts:
-      - app/build/outputs/**/*.apk
-
+      - android/app/build/outputs/**/*.apk
