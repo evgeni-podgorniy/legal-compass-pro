@@ -16,9 +16,13 @@ const config: CapacitorConfig = {
       keystoreAlias: null,
       keystoreAliasPassword: null,
     },
-    path: null, // Позволяет Capacitor автоматически определить путь
-    minSdkVersion: 22, // Минимальная поддерживаемая версия Android
-    allowMixedContent: true, // Разрешает смешанный контент
+    minSdkVersion: 22,
+    allowMixedContent: true,
+  },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true
+    }
   }
 };
 
