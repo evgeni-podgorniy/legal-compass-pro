@@ -29,8 +29,7 @@ workflows:
       - echo "Выполнение сборки Android"
       - cd android
       - ls -la
-      - if [ -f "./gradlew" ]; then chmod +x ./gradlew; else echo "ОШИБКА: gradlew не найден"; exit 1; fi
+      - 'if [ -f "./gradlew" ]; then chmod +x ./gradlew; else echo "ОШИБКА: gradlew не найден"; exit 1; fi'
       - ./gradlew clean assembleDebug
     artifacts:
       - android/app/build/outputs/**/*.apk
-
