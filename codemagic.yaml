@@ -25,11 +25,12 @@ workflows:
       - echo "Проверка содержимого директории android"
       - ls -la android
       - echo "Проверка наличия gradlew"
-      - ls -la android/gradlew || echo "gradlew не найден"
+      - ls -la android/app/gradlew || ls -la android/gradlew || echo "gradlew не найден в ожидаемых местах"
       - echo "Выполнение сборки Android"
       - cd android
       - ls -la
-      - 'if [ -f "./gradlew" ]; then chmod +x ./gradlew; else echo "ОШИБКА: gradlew не найден"; exit 1; fi'
-      - ./gradlew clean assembleDebug
+      - echo "Проверка текущей директории после cd android"
+      - pwd
+      - 'if [ -f "gradlew" ]; then chmod +x gradlew && ./gradlew clean assembleDebug; elif [ -f "app/gradlew" ]; then chmod +x app/gradlew && cd app && ./gradlew clean assembleDebug; else echo "ОШИБКА: gradlew не найден"; exit 1; fi'
     artifacts:
       - android/app/build/outputs/**/*.apk
