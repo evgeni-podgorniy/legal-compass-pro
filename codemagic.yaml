@@ -7,54 +7,35 @@ workflows:
       vars:
         JAVA_VERSION: 17
     scripts:
-      - echo "Начинаем сборку проекта"
-      - echo "Проверка текущей директории"
+      - echo "Starting build process"
+      - echo "Checking current directory"
       - pwd
       - ls -la
-      - echo "Проверка наличия Node и NPM"
+      - echo "Verifying Node and NPM"
       - node --version
       - npm --version
-      - echo "Установка зависимостей проекта"
+      - echo "Installing project dependencies"
       - npm ci
-      - echo "Инициализация Capacitor Android"
-      - npx cap add android || npx cap add android --skip-appid-validation
-      - echo "Сборка веб-приложения"
+      - echo "Building web application"
       - npm run build
-      - echo "Синхронизация с Android"
+      - echo "Adding Android platform if not present"
+      - npx cap add android || echo "Android platform already exists"
+      - echo "Syncing with Android"
       - npx cap sync android
-      - echo "Проверка содержимого директории android"
+      - echo "Checking Android directory structure"
       - ls -la android
-      - echo "Подробная проверка структуры каталога android"
-      - find android -name "gradlew" -type f
-      - echo "Проверка структуры android/app директории"
-      - ls -la android/app || echo "android/app директория не существует"
-      - echo "Выполнение сборки Android"
+      - echo "Moving to Android directory"
       - cd android
-      - echo "Содержимое директории android после перехода:"
+      - echo "Checking for Gradle wrapper"
       - ls -la
-      - echo "Проверка текущей директории после cd android"
-      - pwd
-      - find . -name "gradlew" -type f
-      - echo "Попытка сборки с поиском gradlew"
       - |
-        if [ -f "./gradlew" ]; then
-          chmod +x ./gradlew && ./gradlew clean assembleDebug
-        elif [ -f "gradlew" ]; then
-          chmod +x gradlew && ./gradlew clean assembleDebug
-        elif [ -f "./app/gradlew" ]; then
-          chmod +x ./app/gradlew && cd app && ./gradlew clean assembleDebug
-        elif [ -f "app/gradlew" ]; then
-          chmod +x app/gradlew && cd app && ./gradlew clean assembleDebug
-        else
-          echo "ОШИБКА: gradlew не найден в ожидаемых локациях"
-          echo "Создаем gradlew файл с использованием gradle wrapper"
+        if [ ! -f "./gradlew" ]; then
+          echo "Gradle wrapper not found, creating it"
           gradle wrapper
-          if [ -f "gradlew" ]; then
-            chmod +x gradlew && ./gradlew clean assembleDebug
-          else
-            echo "Не удалось создать gradlew. Сборка невозможна."
-            exit 1
-          fi
         fi
+      - echo "Making gradlew executable"
+      - chmod +x ./gradlew
+      - echo "Running Gradle build"
+      - ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/**/*.apk
