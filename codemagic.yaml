@@ -1,4 +1,3 @@
-
 workflows:
   android-build:
     name: Build Android APK
@@ -19,18 +18,24 @@ workflows:
       - echo "Building web application"
       - npm run build
       - echo "Adding Android platform if not present"
-      - npx cap add android || echo "Android platform already exists"
-      - echo "Syncing with Android"
-      - npx cap sync android
-      - echo "Checking Android directory structure"
-      - ls -la android
+      - |
+        if [ ! -d "android" ]; then
+          echo "Android platform not found, creating it"
+          npx cap add android
+          npx cap sync android
+        fi
       - echo "Moving to Android directory"
       - cd android
-      - echo "Checking for Gradle wrapper"
-      - ls -la
+      - echo "Initializing Gradle if needed"
+      - |
+        if [ ! -f "settings.gradle" ]; then
+          echo "Initializing Gradle project"
+          gradle init --type basic
+        fi
+      - echo "Creating Gradle wrapper if needed"
       - |
         if [ ! -f "./gradlew" ]; then
-          echo "Gradle wrapper not found, creating it"
+          echo "Creating Gradle wrapper"
           gradle wrapper
         fi
       - echo "Making gradlew executable"
