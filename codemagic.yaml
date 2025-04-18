@@ -24,13 +24,36 @@ workflows:
       - npx cap sync android
       - echo "Проверка содержимого директории android"
       - ls -la android
-      - echo "Проверка наличия gradlew"
-      - ls -la android/app/gradlew || ls -la android/gradlew || echo "gradlew не найден в ожидаемых местах"
+      - echo "Подробная проверка структуры каталога android"
+      - find android -name "gradlew" -type f
+      - echo "Проверка структуры android/app директории"
+      - ls -la android/app || echo "android/app директория не существует"
       - echo "Выполнение сборки Android"
       - cd android
+      - echo "Содержимое директории android после перехода:"
       - ls -la
       - echo "Проверка текущей директории после cd android"
       - pwd
-      - 'if [ -f "gradlew" ]; then chmod +x gradlew && ./gradlew clean assembleDebug; elif [ -f "app/gradlew" ]; then chmod +x app/gradlew && cd app && ./gradlew clean assembleDebug; else echo "ОШИБКА: gradlew не найден"; exit 1; fi'
+      - find . -name "gradlew" -type f
+      - echo "Попытка сборки с поиском gradlew"
+      - if [ -f "./gradlew" ]; then
+          chmod +x ./gradlew && ./gradlew clean assembleDebug;
+        elif [ -f "gradlew" ]; then
+          chmod +x gradlew && ./gradlew clean assembleDebug;
+        elif [ -f "./app/gradlew" ]; then
+          chmod +x ./app/gradlew && cd app && ./gradlew clean assembleDebug;
+        elif [ -f "app/gradlew" ]; then
+          chmod +x app/gradlew && cd app && ./gradlew clean assembleDebug;
+        else
+          echo "ОШИБКА: gradlew не найден в ожидаемых локациях";
+          echo "Создаем gradlew файл с использованием gradle wrapper";
+          gradle wrapper;
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew && ./gradlew clean assembleDebug;
+          else
+            echo "Не удалось создать gradlew. Сборка невозможна.";
+            exit 1;
+          fi;
+        fi
     artifacts:
       - android/app/build/outputs/**/*.apk
