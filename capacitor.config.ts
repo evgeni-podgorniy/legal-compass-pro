@@ -2,7 +2,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.8dd304f0898e4e1fad277e7205677a58',
+  appId: 'com.lovable.legalcompasspro',
   appName: 'legal-compass-pro',
   webDir: 'dist',
   server: {

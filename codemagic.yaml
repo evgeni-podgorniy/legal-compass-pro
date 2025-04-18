@@ -17,7 +17,7 @@ workflows:
       - echo "Установка зависимостей проекта"
       - npm ci
       - echo "Инициализация Capacitor Android"
-      - npx cap add android
+      - npx cap add android || npx cap add android --skip-appid-validation
       - echo "Сборка веб-приложения"
       - npm run build
       - echo "Синхронизация с Android"
