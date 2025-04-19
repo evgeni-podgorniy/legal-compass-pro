@@ -1,3 +1,4 @@
+
 workflows:
   android-build:
     name: Build Android APK
@@ -22,25 +23,26 @@ workflows:
         if [ ! -d "android" ]; then
           echo "Android platform not found, creating it"
           npx cap add android
-          npx cap sync android
         fi
+      - echo "Syncing web build with Android platform"
+      - npx cap sync android
       - echo "Moving to Android directory"
       - cd android
-      - echo "Initializing Gradle if needed"
-      - |
-        if [ ! -f "settings.gradle" ]; then
-          echo "Initializing Gradle project"
-          gradle init --type basic
-        fi
-      - echo "Creating Gradle wrapper if needed"
+      - echo "Checking Android directory structure"
+      - ls -la
+      - echo "Checking for Gradle wrapper"
       - |
         if [ ! -f "./gradlew" ]; then
-          echo "Creating Gradle wrapper"
+          echo "Gradle wrapper not found, creating it"
           gradle wrapper
+          chmod +x ./gradlew
+        else
+          echo "Gradle wrapper found, making it executable"
+          chmod +x ./gradlew
         fi
-      - echo "Making gradlew executable"
-      - chmod +x ./gradlew
-      - echo "Running Gradle build"
-      - ./gradlew assembleDebug
+      - echo "Checking available Gradle tasks"
+      - ./gradlew tasks
+      - echo "Building Android Debug APK"
+      - ./gradlew app:assembleDebug
     artifacts:
       - android/app/build/outputs/**/*.apk
