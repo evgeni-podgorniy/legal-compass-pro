@@ -34,22 +34,37 @@ workflows:
       - |
         if [ ! -f "./gradlew" ]; then
           echo "Gradle wrapper not found in Android project"
-          echo "Using Gradle to initialize the wrapper"
-          # Use system gradle to create the wrapper
-          gradle wrapper
-          if [ -f "./gradlew" ]; then
-            echo "Gradle wrapper created successfully"
-            chmod +x ./gradlew
-          else
-            echo "Failed to create Gradle wrapper, build cannot continue"
-            exit 1
+          echo "Running Capacitor sync again to ensure proper initialization"
+          cd ..
+          npx cap sync android --force
+          cd android
+          
+          if [ ! -f "./gradlew" ]; then
+            echo "Still no Gradle wrapper, attempting to initialize Gradle project"
+            # First check if we have a settings.gradle file
+            if [ ! -f "./settings.gradle" ] && [ ! -f "./settings.gradle.kts" ]; then
+              echo "No settings.gradle found, this is unexpected"
+              echo "Running gradle init to create a basic Gradle build"
+              gradle init --type basic --dsl groovy
+            fi
+            
+            echo "Now creating Gradle wrapper"
+            gradle wrapper
+            
+            if [ ! -f "./gradlew" ]; then
+              echo "Failed to create Gradle wrapper, build cannot continue"
+              exit 1
+            fi
           fi
+          
+          echo "Gradle wrapper created successfully"
+          chmod +x ./gradlew
         else
           echo "Gradle wrapper found, making it executable"
           chmod +x ./gradlew
         fi
       - echo "Listing available Gradle tasks"
-      - ./gradlew tasks --all
+      - ./gradlew tasks --all || echo "Failed to list tasks, continuing anyway"
       - echo "Building Android Debug APK"
       - ./gradlew assembleDebug
     artifacts:
