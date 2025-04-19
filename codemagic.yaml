@@ -33,22 +33,24 @@ workflows:
       - echo "Checking for Gradle wrapper"
       - |
         if [ ! -f "./gradlew" ]; then
-          echo "Unable to find Gradle wrapper in Android project"
-          echo "This is unexpected as Capacitor should generate it"
-          echo "Attempting to generate it manually"
-          ./gradlew wrapper
+          echo "Gradle wrapper not found in Android project"
+          echo "Using Gradle to initialize the wrapper"
+          # Use system gradle to create the wrapper
+          gradle wrapper
+          if [ -f "./gradlew" ]; then
+            echo "Gradle wrapper created successfully"
+            chmod +x ./gradlew
+          else
+            echo "Failed to create Gradle wrapper, build cannot continue"
+            exit 1
+          fi
         else
           echo "Gradle wrapper found, making it executable"
           chmod +x ./gradlew
         fi
-      - echo "Running Gradle tasks"
-      - cd app
-      - echo "Checking app directory structure"
-      - ls -la
-      - cd ..
       - echo "Listing available Gradle tasks"
-      - ./gradlew tasks
+      - ./gradlew tasks --all
       - echo "Building Android Debug APK"
-      - ./gradlew :app:assembleDebug
+      - ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/**/*.apk
