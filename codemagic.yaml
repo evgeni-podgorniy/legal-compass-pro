@@ -26,46 +26,68 @@ workflows:
         fi
       - echo "Syncing web build with Android platform"
       - npx cap sync android
-      - echo "Moving to Android directory"
-      - cd android
-      - echo "Checking Android directory structure"
-      - ls -la
-      - echo "Checking for Gradle wrapper"
+      - echo "Checking Android directory structure after sync"
+      - ls -la android
+      - echo "Checking for build.gradle and settings.gradle"
+      - ls -la android/app
       - |
+        # Ensure we're in the Android directory
+        cd android
         if [ ! -f "./gradlew" ]; then
           echo "Gradle wrapper not found in Android project"
-          echo "Running Capacitor sync again to ensure proper initialization"
-          cd ..
-          npx cap sync android --force
-          cd android
+          # Check if we have basic Gradle files
+          if [ ! -f "./settings.gradle" ]; then
+            echo "ERROR: No settings.gradle found. Capacitor sync didn't create a proper Android project."
+            echo "Showing android directory contents:"
+            ls -la
+            echo "Trying to force recreate Android platform"
+            cd ..
+            rm -rf android
+            npx cap add android
+            npx cap sync android
+            cd android
+          fi
           
+          # Now try to create the Gradle wrapper if it still doesn't exist
           if [ ! -f "./gradlew" ]; then
-            echo "Still no Gradle wrapper, attempting to initialize Gradle project"
-            # First check if we have a settings.gradle file
-            if [ ! -f "./settings.gradle" ] && [ ! -f "./settings.gradle.kts" ]; then
-              echo "No settings.gradle found, this is unexpected"
-              echo "Running gradle init to create a basic Gradle build"
-              gradle init --type basic --dsl groovy
+            echo "Attempting to generate Gradle wrapper manually"
+            # Check if Gradle is available
+            which gradle
+            if [ $? -eq 0 ]; then
+              echo "Using gradle command to create wrapper"
+              gradle wrapper
+            else
+              echo "Gradle not found, using Gradle embedded in Android Studio"
+              # Alternative approach if gradle command isn't available
+              ./gradlew wrapper
             fi
             
-            echo "Now creating Gradle wrapper"
-            gradle wrapper
-            
+            # Verify if wrapper was created
             if [ ! -f "./gradlew" ]; then
-              echo "Failed to create Gradle wrapper, build cannot continue"
+              echo "CRITICAL ERROR: Failed to create Gradle wrapper"
+              echo "Current directory contents:"
+              ls -la
               exit 1
             fi
           fi
           
-          echo "Gradle wrapper created successfully"
+          echo "Making Gradle wrapper executable"
           chmod +x ./gradlew
         else
           echo "Gradle wrapper found, making it executable"
           chmod +x ./gradlew
         fi
-      - echo "Listing available Gradle tasks"
-      - ./gradlew tasks --all || echo "Failed to list tasks, continuing anyway"
-      - echo "Building Android Debug APK"
-      - ./gradlew assembleDebug
+        
+        # Verify Gradle wrapper works
+        echo "Testing Gradle wrapper"
+        ./gradlew -v
+        
+        # List available tasks
+        echo "Listing available Gradle tasks"
+        ./gradlew tasks --all || echo "Warning: Failed to list tasks, but continuing"
+        
+        # Build the APK
+        echo "Building Android Debug APK"
+        ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/**/*.apk
