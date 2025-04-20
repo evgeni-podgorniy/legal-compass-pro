@@ -34,6 +34,23 @@ workflows:
         # Ensure we're in the Android directory
         cd android
         
+        # Create a file that fixes Java compatibility for the Capacitor plugin
+        echo "Creating a fix for Capacitor's Java compatibility"
+        cat > capacitor-java-fix.gradle << 'EOL'
+        allprojects {
+            tasks.withType(JavaCompile) {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
+        EOL
+        
+        # Apply the fix to the Capacitor Android module
+        if [ -f "./capacitor-android/build.gradle" ]; then
+          echo "Applying Java fix to capacitor-android/build.gradle"
+          echo "apply from: '../capacitor-java-fix.gradle'" >> ./capacitor-android/build.gradle
+        fi
+        
         # Fix Java compatibility issue by modifying build.gradle files
         echo "Setting Java compatibility version to fix 'invalid source release: 21' error"
         if [ -f "./app/build.gradle" ]; then
