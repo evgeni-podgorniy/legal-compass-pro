@@ -18,6 +18,7 @@ const config: CapacitorConfig = {
     },
     minSdkVersion: 22,
     allowMixedContent: true,
+    javaVersion: "17", // Explicitly set Java version
   },
   plugins: {
     CapacitorHttp: {

@@ -33,6 +33,39 @@ workflows:
       - |
         # Ensure we're in the Android directory
         cd android
+        
+        # Fix Java compatibility issue by modifying build.gradle files
+        echo "Setting Java compatibility version to fix 'invalid source release: 21' error"
+        if [ -f "./app/build.gradle" ]; then
+          echo "Updating app/build.gradle with Java compatibility settings"
+          # Check if compileOptions block exists and add/modify as needed
+          if grep -q "compileOptions" "./app/build.gradle"; then
+            sed -i '' 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' ./app/build.gradle
+            sed -i '' 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' ./app/build.gradle
+          else
+            # Add compileOptions block if it doesn't exist
+            sed -i '' '/android {/a\
+    compileOptions {\
+        sourceCompatibility JavaVersion.VERSION_17\
+        targetCompatibility JavaVersion.VERSION_17\
+    }' ./app/build.gradle
+          fi
+        fi
+        
+        # Also check the root build.gradle if it exists
+        if [ -f "./build.gradle" ]; then
+          echo "Updating root build.gradle with Java compatibility settings"
+          # Add similar modifications to the root build.gradle if needed
+          if grep -q "allprojects" "./build.gradle"; then
+            sed -i '' '/allprojects {/a\
+    tasks.withType(JavaCompile) {\
+        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"\
+        sourceCompatibility = JavaVersion.VERSION_17\
+        targetCompatibility = JavaVersion.VERSION_17\
+    }' ./build.gradle
+          fi
+        fi
+        
         if [ ! -f "./gradlew" ]; then
           echo "Gradle wrapper not found in Android project"
           # Check if we have basic Gradle files
