@@ -40,15 +40,12 @@ workflows:
           echo "Updating app/build.gradle with Java compatibility settings"
           # Check if compileOptions block exists and add/modify as needed
           if grep -q "compileOptions" "./app/build.gradle"; then
-            sed -i '' 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' ./app/build.gradle
-            sed -i '' 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' ./app/build.gradle
+            sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' ./app/build.gradle
+            sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' ./app/build.gradle
           else
-            # Add compileOptions block if it doesn't exist
-            sed -i '' '/android {/a\
-    compileOptions {\
-        sourceCompatibility JavaVersion.VERSION_17\
-        targetCompatibility JavaVersion.VERSION_17\
-    }' ./app/build.gradle
+            # Add compileOptions block if it doesn't exist - fixed syntax for sed command
+            awk '/android {/{ print; print "    compileOptions {"; print "        sourceCompatibility JavaVersion.VERSION_17"; print "        targetCompatibility JavaVersion.VERSION_17"; print "    }"; next}1' ./app/build.gradle > ./app/build.gradle.tmp
+            mv ./app/build.gradle.tmp ./app/build.gradle
           fi
         fi
         
@@ -57,12 +54,9 @@ workflows:
           echo "Updating root build.gradle with Java compatibility settings"
           # Add similar modifications to the root build.gradle if needed
           if grep -q "allprojects" "./build.gradle"; then
-            sed -i '' '/allprojects {/a\
-    tasks.withType(JavaCompile) {\
-        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"\
-        sourceCompatibility = JavaVersion.VERSION_17\
-        targetCompatibility = JavaVersion.VERSION_17\
-    }' ./build.gradle
+            # Fixed syntax for sed command
+            awk '/allprojects {/{ print; print "    tasks.withType(JavaCompile) {"; print "        options.compilerArgs << \"-Xlint:unchecked\" << \"-Xlint:deprecation\""; print "        sourceCompatibility = JavaVersion.VERSION_17"; print "        targetCompatibility = JavaVersion.VERSION_17"; print "    }"; next}1' ./build.gradle > ./build.gradle.tmp
+            mv ./build.gradle.tmp ./build.gradle
           fi
         fi
         
