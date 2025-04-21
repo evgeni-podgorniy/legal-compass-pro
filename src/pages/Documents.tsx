@@ -5,6 +5,7 @@ import Footer from '@/components/Footer';
 import DocumentForm from '@/components/DocumentForm';
 import { FileText, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import AppIcon from '@/components/AppIcon';
 
 const Documents = () => {
   return (
@@ -21,10 +22,15 @@ const Documents = () => {
             
             <Card className="mb-4">
               <CardHeader className="pb-3">
-                <CardTitle>Создание юридических документов</CardTitle>
-                <CardDescription>
-                  Выберите шаблон документа и заполните необходимые поля для создания готового к использованию документа.
-                </CardDescription>
+                <div className="flex items-center gap-3">
+                  <AppIcon size={32} />
+                  <div>
+                    <CardTitle>Создание юридических документов</CardTitle>
+                    <CardDescription>
+                      Выберите шаблон документа и заполните необходимые поля для создания готового к использованию документа согласно законодательству РФ.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
             </Card>
             
@@ -71,16 +77,20 @@ const Documents = () => {
                         <p className="text-muted-foreground">Для возврата товара или денег</p>
                       </li>
                       <li className="text-sm">
-                        <span className="font-medium">Заявление на отпуск</span>
-                        <p className="text-muted-foreground">Для оформления ежегодного отпуска</p>
+                        <span className="font-medium">Исковое заявление о расторжении брака</span>
+                        <p className="text-muted-foreground">Для оформления развода</p>
                       </li>
                       <li className="text-sm">
-                        <span className="font-medium">Доверенность</span>
-                        <p className="text-muted-foreground">Для представления интересов</p>
+                        <span className="font-medium">Заявление о взыскании алиментов</span>
+                        <p className="text-muted-foreground">Для получения алиментов на ребенка</p>
                       </li>
                       <li className="text-sm">
-                        <span className="font-medium">Расписка о получении денег</span>
-                        <p className="text-muted-foreground">Для подтверждения передачи средств</p>
+                        <span className="font-medium">Жалоба в трудовую инспекцию</span>
+                        <p className="text-muted-foreground">Защита трудовых прав</p>
+                      </li>
+                      <li className="text-sm">
+                        <span className="font-medium">Жалоба в жилищную инспекцию</span>
+                        <p className="text-muted-foreground">При проблемах с ЖКХ</p>
                       </li>
                     </ul>
                   </CardContent>
