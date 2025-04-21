@@ -9,6 +9,9 @@ import Chat from "./pages/Chat";
 import Documents from "./pages/Documents";
 import Analysis from "./pages/Analysis";
 import NotFound from "./pages/NotFound";
+import Premium from "./pages/Premium";
+import SubscriptionBanner from "./components/SubscriptionBanner";
+import './styles/premium.css';
 
 const queryClient = new QueryClient();
 
@@ -18,11 +21,13 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <SubscriptionBanner />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/documents" element={<Documents />} />
           <Route path="/analysis" element={<Analysis />} />
+          <Route path="/premium" element={<Premium />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
