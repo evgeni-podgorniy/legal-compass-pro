@@ -5,8 +5,8 @@ workflows:
     max_build_duration: 60
     environment:
       vars:
-        JAVA_VERSION: 17
-      java: 17
+        JAVA_VERSION: 21
+      java: 21
     scripts:
       - echo "Starting build process"
       - echo "Checking current directory"
@@ -42,9 +42,10 @@ workflows:
         android.useAndroidX=true
         android.enableJetifier=true
         android.defaults.buildfeatures.buildconfig=true
-        org.gradle.java.home=${JAVA_HOME}
+        # Use direct path instead of environment variable
+        # org.gradle.java.home=${JAVA_HOME}
         # Explicitly set Java version
-        java.toolchain.version=17
+        java.toolchain.version=21
         EOL
         
         # Create a specialized capacitor fix gradle file
@@ -52,8 +53,8 @@ workflows:
         cat > capacitor-java-fix.gradle << 'EOL'
         allprojects {
             tasks.withType(JavaCompile) {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
+                sourceCompatibility = JavaVersion.VERSION_21
+                targetCompatibility = JavaVersion.VERSION_21
             }
         }
 
@@ -62,8 +63,8 @@ workflows:
                 if (project.hasProperty('android')) {
                     android {
                         compileOptions {
-                            sourceCompatibility JavaVersion.VERSION_17
-                            targetCompatibility JavaVersion.VERSION_17
+                            sourceCompatibility JavaVersion.VERSION_21
+                            targetCompatibility JavaVersion.VERSION_21
                         }
                     }
                 }
@@ -75,27 +76,24 @@ workflows:
         echo "Applying fixes to root build.gradle"
         if [ -f "build.gradle" ]; then
             # Add the apply statement to the top of the file if not already there
-            if ! grep -q "apply from: 'capacitor-java-fix.gradle'" "build.gradle"; then
-                sed -i '1s/^/apply from: "capacitor-java-fix.gradle"\n\n/' build.gradle
-            fi
+            grep -q "apply from: 'capacitor-java-fix.gradle'" "build.gradle" || sed -i.bak '1s/^/apply from: "capacitor-java-fix.gradle"\n\n/' build.gradle
         fi
         
         # Direct fix for capacitor-android's build.gradle
         echo "Applying direct fixes to capacitor-android/build.gradle"
         if [ -f "capacitor-android/build.gradle" ]; then
-            # Update compileOptions block
+            # Update existing compileOptions block if it exists
             if grep -q "compileOptions" "capacitor-android/build.gradle"; then
-                # Update existing compileOptions block
-                sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' capacitor-android/build.gradle
-                sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' capacitor-android/build.gradle
+                sed -i.bak 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_21/g' capacitor-android/build.gradle
+                sed -i.bak 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_21/g' capacitor-android/build.gradle
             else
                 # Add compileOptions block
-                sed -i '/android {/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }' capacitor-android/build.gradle
+                sed -i.bak '/android {/a\\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_21\n        targetCompatibility JavaVersion.VERSION_21\n    }' capacitor-android/build.gradle
             fi
             
             # Ensure no other Java version settings exist
-            sed -i 's/sourceCompatibility = .*/sourceCompatibility = JavaVersion.VERSION_17/g' capacitor-android/build.gradle
-            sed -i 's/targetCompatibility = .*/targetCompatibility = JavaVersion.VERSION_17/g' capacitor-android/build.gradle
+            sed -i.bak 's/sourceCompatibility = .*/sourceCompatibility = JavaVersion.VERSION_21/g' capacitor-android/build.gradle
+            sed -i.bak 's/targetCompatibility = .*/targetCompatibility = JavaVersion.VERSION_21/g' capacitor-android/build.gradle
         fi
         
         # Apply fixes to capacitor-cordova-android-plugins
@@ -103,10 +101,11 @@ workflows:
         if [ -f "capacitor-cordova-android-plugins/build.gradle" ]; then
             # Update compileOptions block
             if grep -q "compileOptions" "capacitor-cordova-android-plugins/build.gradle"; then
-                sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' capacitor-cordova-android-plugins/build.gradle
-                sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' capacitor-cordova-android-plugins/build.gradle
+                sed -i.bak 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_21/g' capacitor-cordova-android-plugins/build.gradle
+                sed -i.bak 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_21/g' capacitor-cordova-android-plugins/build.gradle
             else
-                sed -i '/android {/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }' capacitor-cordova-android-plugins/build.gradle
+                # Add compileOptions block with proper inline sed command for MacOS/Linux
+                sed -i.bak '/android {/a\\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_21\n        targetCompatibility JavaVersion.VERSION_21\n    }' capacitor-cordova-android-plugins/build.gradle
             fi
         fi
         
@@ -115,10 +114,11 @@ workflows:
         if [ -f "app/build.gradle" ]; then
             # Update compileOptions block
             if grep -q "compileOptions" "app/build.gradle"; then
-                sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' app/build.gradle
-                sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' app/build.gradle
+                sed -i.bak 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_21/g' app/build.gradle
+                sed -i.bak 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_21/g' app/build.gradle
             else
-                sed -i '/android {/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }' app/build.gradle
+                # Add compileOptions block with proper inline sed command for MacOS/Linux
+                sed -i.bak '/android {/a\\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_21\n        targetCompatibility JavaVersion.VERSION_21\n    }' app/build.gradle
             fi
         fi
                 
@@ -127,17 +127,17 @@ workflows:
         mkdir -p $HOME/.gradle
         cat > $HOME/.gradle/gradle.properties << 'EOL'
         org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-        java.toolchain.version=17
+        java.toolchain.version=21
         EOL
         
         # Ensure Gradle wrapper exists and is executable
         if [ ! -f "./gradlew" ]; then
             echo "Gradle wrapper not found, attempting to create"
-            gradle wrapper --gradle-version=7.6 --distribution-type=bin
+            gradle wrapper --gradle-version=8.0 --distribution-type=bin
             if [ ! -f "./gradlew" ]; then
                 echo "Failed to create wrapper with gradle command, trying manual approach"
                 mkdir -p gradle/wrapper
-                echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-7.6-bin.zip" > gradle/wrapper/gradle-wrapper.properties
+                echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.0-bin.zip" > gradle/wrapper/gradle-wrapper.properties
                 echo "distributionBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
                 echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
                 echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties

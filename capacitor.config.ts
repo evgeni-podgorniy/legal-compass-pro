@@ -18,9 +18,9 @@ const config: CapacitorConfig = {
     },
     minSdkVersion: 22,
     allowMixedContent: true,
-    javaVersion: "17", // Explicitly set to Java 17
-    targetSdkVersion: 33, // Explicitly set target SDK
-    compileSdkVersion: 33, // Explicitly set compile SDK
+    javaVersion: "21", // Updated to Java 21
+    targetSdkVersion: 33,
+    compileSdkVersion: 33,
   },
   plugins: {
     CapacitorHttp: {
