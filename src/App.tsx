@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import BackButton from "./components/BackButton";
 import Index from "./pages/Index";
 import Chat from "./pages/Chat";
 import Documents from "./pages/Documents";
@@ -21,6 +22,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <BackButton />
         <SubscriptionBanner />
         <Routes>
           <Route path="/" element={<Index />} />
