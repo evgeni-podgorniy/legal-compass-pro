@@ -35,107 +35,105 @@ workflows:
         # Ensure we're in the Android directory
         cd android
         
-        # Create a toolchain.gradle file specifically for Java compatibility
-        echo "Creating toolchain.gradle with Java 17 settings"
-        cat > toolchain.gradle << 'EOL'
-        ext {
-            compileSdkVersion = 33
-            targetSdkVersion = 33
-            minSdkVersion = 22
-            buildToolsVersion = '33.0.2'
-            javaVersion = JavaVersion.VERSION_17
+        # Create a JVM specific gradle.properties to override any conflicting settings
+        echo "Creating JVM-specific gradle.properties"
+        cat > gradle.properties << 'EOL'
+        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        android.useAndroidX=true
+        android.enableJetifier=true
+        android.defaults.buildfeatures.buildconfig=true
+        org.gradle.java.home=${JAVA_HOME}
+        # Explicitly set Java version
+        java.toolchain.version=17
+        EOL
+        
+        # Create a specialized capacitor fix gradle file
+        echo "Creating capacitor Java fix"
+        cat > capacitor-java-fix.gradle << 'EOL'
+        allprojects {
+            tasks.withType(JavaCompile) {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
         }
 
         subprojects {
             afterEvaluate { project ->
                 if (project.hasProperty('android')) {
                     android {
-                        compileSdkVersion rootProject.ext.compileSdkVersion
-                        buildToolsVersion rootProject.ext.buildToolsVersion
-                        
-                        defaultConfig {
-                            minSdkVersion rootProject.ext.minSdkVersion
-                            targetSdkVersion rootProject.ext.targetSdkVersion
-                        }
-                        
                         compileOptions {
-                            sourceCompatibility rootProject.ext.javaVersion
-                            targetCompatibility rootProject.ext.javaVersion
+                            sourceCompatibility JavaVersion.VERSION_17
+                            targetCompatibility JavaVersion.VERSION_17
                         }
-                    }
-                }
-                
-                if (project.hasProperty('android') || project.hasProperty('java')) {
-                    tasks.withType(JavaCompile) {
-                        options.compilerArgs << '-Xlint:none'
-                        sourceCompatibility = rootProject.ext.javaVersion
-                        targetCompatibility = rootProject.ext.javaVersion
                     }
                 }
             }
         }
         EOL
         
-        # Apply the toolchain to the root build.gradle file
-        echo "Applying toolchain to root build.gradle"
+        # Apply the fix to the root build.gradle
+        echo "Applying fixes to root build.gradle"
         if [ -f "build.gradle" ]; then
-            # Check if the toolchain is already applied
-            if ! grep -q "apply from: 'toolchain.gradle'" "build.gradle"; then
-                # Add the apply statement to the top of the file
-                sed -i '1s/^/apply from: "toolchain.gradle"\n\n/' build.gradle
+            # Add the apply statement to the top of the file if not already there
+            if ! grep -q "apply from: 'capacitor-java-fix.gradle'" "build.gradle"; then
+                sed -i '1s/^/apply from: "capacitor-java-fix.gradle"\n\n/' build.gradle
             fi
         fi
         
-        # Direct fixes to individual build.gradle files
-        echo "Directly modifying capacitor-android/build.gradle"
+        # Direct fix for capacitor-android's build.gradle
+        echo "Applying direct fixes to capacitor-android/build.gradle"
         if [ -f "capacitor-android/build.gradle" ]; then
-            # Replace any Java version with 17
-            sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' capacitor-android/build.gradle
-            sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' capacitor-android/build.gradle
-            
-            # Add compileOptions block if it doesn't exist
-            if ! grep -q "compileOptions" "capacitor-android/build.gradle"; then
+            # Update compileOptions block
+            if grep -q "compileOptions" "capacitor-android/build.gradle"; then
+                # Update existing compileOptions block
+                sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' capacitor-android/build.gradle
+                sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' capacitor-android/build.gradle
+            else
+                # Add compileOptions block
                 sed -i '/android {/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }' capacitor-android/build.gradle
             fi
+            
+            # Ensure no other Java version settings exist
+            sed -i 's/sourceCompatibility = .*/sourceCompatibility = JavaVersion.VERSION_17/g' capacitor-android/build.gradle
+            sed -i 's/targetCompatibility = .*/targetCompatibility = JavaVersion.VERSION_17/g' capacitor-android/build.gradle
         fi
         
-        echo "Directly modifying capacitor-cordova-android-plugins/build.gradle"
+        # Apply fixes to capacitor-cordova-android-plugins
+        echo "Applying fixes to capacitor-cordova-android-plugins/build.gradle"
         if [ -f "capacitor-cordova-android-plugins/build.gradle" ]; then
-            # Replace any Java version with 17
-            sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' capacitor-cordova-android-plugins/build.gradle
-            sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' capacitor-cordova-android-plugins/build.gradle
-            
-            # Add compileOptions block if it doesn't exist
-            if ! grep -q "compileOptions" "capacitor-cordova-android-plugins/build.gradle"; then
+            # Update compileOptions block
+            if grep -q "compileOptions" "capacitor-cordova-android-plugins/build.gradle"; then
+                sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' capacitor-cordova-android-plugins/build.gradle
+                sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' capacitor-cordova-android-plugins/build.gradle
+            else
                 sed -i '/android {/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }' capacitor-cordova-android-plugins/build.gradle
             fi
         fi
         
-        echo "Directly modifying app/build.gradle"
+        # Apply fixes to app/build.gradle
+        echo "Applying fixes to app/build.gradle"
         if [ -f "app/build.gradle" ]; then
-            # Replace any Java version with 17
-            sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' app/build.gradle
-            sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' app/build.gradle
-            
-            # Add compileOptions block if it doesn't exist
-            if ! grep -q "compileOptions" "app/build.gradle"; then
+            # Update compileOptions block
+            if grep -q "compileOptions" "app/build.gradle"; then
+                sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_17/g' app/build.gradle
+                sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_17/g' app/build.gradle
+            else
                 sed -i '/android {/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }' app/build.gradle
             fi
         fi
-        
-        echo "Creating gradle.properties with Java compatibility settings"
-        cat > gradle.properties << 'EOL'
-        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8 -Duser.language=en
-        android.useAndroidX=true
-        android.enableJetifier=true
-        android.defaults.buildfeatures.buildconfig=true
-        org.gradle.java.home=${JAVA_HOME}
+                
+        # Create a system-level gradle.properties file as a fallback
+        echo "Creating system-level gradle.properties"
+        mkdir -p $HOME/.gradle
+        cat > $HOME/.gradle/gradle.properties << 'EOL'
+        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        java.toolchain.version=17
         EOL
         
         # Ensure Gradle wrapper exists and is executable
         if [ ! -f "./gradlew" ]; then
             echo "Gradle wrapper not found, attempting to create"
-            gradle wrapper
+            gradle wrapper --gradle-version=7.6 --distribution-type=bin
             if [ ! -f "./gradlew" ]; then
                 echo "Failed to create wrapper with gradle command, trying manual approach"
                 mkdir -p gradle/wrapper
@@ -154,9 +152,9 @@ workflows:
             chmod +x ./gradlew
         fi
         
-        # Clean and build
+        # Clean the build before starting fresh
         echo "Running Gradle clean"
-        ./gradlew clean
+        ./gradlew clean --refresh-dependencies
         
         echo "Building Android Debug APK"
         ./gradlew assembleDebug
