@@ -33,15 +33,19 @@ interface ChatInterfaceProps {
   initialMessage?: string;
 }
 
-// Локальная база ответов на частые вопросы (для работы без интернет-соединения)
+// Расширенная локальная база ответов на частые вопросы (для работы без интернет-соединения)
 const offlineResponses: Record<string, string> = {
   default: "К сожалению, нет подключения к интернету. При отсутствии подключения я могу предоставлять только базовые юридические консультации.",
   трудовой: "Трудовые отношения регулируются Трудовым кодексом РФ. Основные права работника: оплата труда, отдых, безопасные условия труда. Трудовой договор - основной документ, регулирующий отношения работника и работодателя.",
+  увольнение: "Увольнение может быть по инициативе работника (по собственному желанию) или работодателя. При увольнении по собственному желанию работник должен предупредить работодателя в письменной форме за 2 недели. Статья 80 ТК РФ регулирует этот процесс.",
   договор: "Договорные отношения регулируются Гражданским кодексом РФ. Для действительности договора необходимо соблюдение формы, дееспособность сторон, законность содержания и соблюдение воли сторон.",
   наследство: "Наследование регулируется частью 3 Гражданского кодекса РФ. Наследование возможно по закону и по завещанию. Срок принятия наследства - 6 месяцев со дня смерти наследодателя.",
   штраф: "Штрафы за нарушение ПДД регулируются КоАП РФ. Срок обжалования - 10 дней с момента вынесения постановления. Оплата в течение 20 дней со дня вынесения даёт право на 50% скидку.",
   развод: "Расторжение брака регламентируется Семейным кодексом РФ. При наличии несовершеннолетних детей или при отсутствии согласия одного из супругов развод производится через суд.",
   алименты: "Алиментные обязательства регулируются Семейным кодексом РФ. Размер алиментов на несовершеннолетних детей: на 1 ребенка - 1/4, на 2 детей - 1/3, на 3 и более - 1/2 заработка.",
+  осаго: "ОСАГО - обязательное страхование гражданской ответственности владельцев транспортных средств. Регулируется ФЗ «Об обязательном страховании гражданской ответственности владельцев транспортных средств». Срок выплаты - 20 дней с момента подачи документов.",
+  суд: "Для обращения в суд необходимо составить исковое заявление согласно требованиям ГПК РФ. К иску нужно приложить документы, подтверждающие требования. Госпошлина рассчитывается в зависимости от цены иска.",
+  привет: "Здравствуйте! Я ваш юридический помощник, работающий сейчас в офлайн режиме. Могу ответить на базовые правовые вопросы, но для детальной консультации потребуется подключение к интернету."
 };
 
 const findOfflineResponse = (query: string): string => {
@@ -73,6 +77,7 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showOfflineAlert, setShowOfflineAlert] = useState(false);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -93,6 +98,9 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
         title: "Подключение восстановлено",
         description: "Интернет-соединение восстановлено. Теперь доступны все функции чата.",
       });
+      
+      // Сбросить счетчик повторных попыток при восстановлении соединения
+      setRetryCount(0);
     };
     
     const handleOffline = () => {
@@ -142,6 +150,10 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
   // Проверка сетевого соединения с сервером API
   const checkApiConnection = async (): Promise<boolean> => {
     try {
+      if (!navigator.onLine) {
+        return false;
+      }
+      
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
@@ -165,17 +177,25 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
       return 'Пожалуйста, введите ваш API ключ Perplexity AI для использования чата.';
     }
 
-    // Если нет подключения, используем офлайн-ответы
-    if (!isOnline) {
+    // Если нет подключения или превышено количество повторных попыток, используем офлайн-ответы
+    if (!isOnline || retryCount > 2) {
+      if (retryCount > 2) {
+        setNetworkError("Не удалось подключиться к серверу после нескольких попыток. Работаем в автономном режиме.");
+      }
       return findOfflineResponse(message);
     }
 
     // Проверяем соединение с API
     const isApiAvailable = await checkApiConnection();
     if (!isApiAvailable) {
+      // Увеличиваем счетчик повторных попыток
+      setRetryCount(prev => prev + 1);
       setNetworkError("Сервер API недоступен. Работаем в автономном режиме.");
       return findOfflineResponse(message);
     }
+
+    // Если соединение восстановлено, сбрасываем счетчик
+    setRetryCount(0);
 
     // Правовой контекст для модели
     const legalContext = `Ты — профессиональный юрист-консультант. Отвечай на вопросы, основываясь на законодательстве РФ. 
@@ -246,6 +266,8 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
         }
       }
       
+      // Увеличиваем счетчик попыток при ошибках
+      setRetryCount(prev => prev + 1);
       return errorMessage;
     }
   };
@@ -322,8 +344,18 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
     handleSendMessage(input);
   };
 
-  const handleRetry = (originalMessage: string) => {
-    handleSendMessage(originalMessage);
+  const handleRetry = () => {
+    if (retryMessage) {
+      handleSendMessage(retryMessage);
+    }
+  };
+
+  const handleCloseNetworkError = () => {
+    setNetworkError(null);
+    // Если в автономном режиме, показываем уведомление об автономной работе
+    if (!isOnline) {
+      setShowOfflineAlert(true);
+    }
   };
 
   return (
@@ -379,7 +411,7 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => setNetworkError(null)}
+                onClick={handleCloseNetworkError}
               >
                 Закрыть
               </Button>
@@ -434,25 +466,12 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
                 <div className="whitespace-pre-wrap">{message.content}</div>
               )}
               
-              {message.error && !message.isLoading && (
+              {message.error && !message.isLoading && retryMessage && (
                 <div className="mt-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => {
-                      // Находим сообщение пользователя перед этим сообщением с ошибкой
-                      const index = messages.findIndex(m => m.id === message.id);
-                      if (index > 0) {
-                        const userMessage = messages
-                          .slice(0, index)
-                          .reverse()
-                          .find(m => m.sender === 'user');
-                        
-                        if (userMessage) {
-                          handleRetry(userMessage.content);
-                        }
-                      }
-                    }}
+                    onClick={handleRetry}
                     className="text-xs"
                   >
                     Повторить запрос
@@ -480,12 +499,9 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
           type="submit"
           size="icon" 
           disabled={isLoading || !input.trim() || showApiKeyInput}
+          isLoading={isLoading}
         >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
+          {!isLoading && <Send className="h-4 w-4" />}
         </Button>
       </form>
     </div>
