@@ -1,8 +1,7 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, AlertTriangle, CheckCircle, Info } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface AnalysisIssue {
@@ -12,7 +11,11 @@ interface AnalysisIssue {
   recommendation: string;
 }
 
-const ContractAnalysis = () => {
+interface ContractAnalysisProps {
+  onAnalysisComplete?: () => void;
+}
+
+const ContractAnalysis = ({ onAnalysisComplete }: ContractAnalysisProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<AnalysisIssue[] | null>(null);
@@ -91,6 +94,11 @@ const ContractAnalysis = () => {
         title: "Анализ завершен",
         description: `Найдено ${demoResults.length} замечаний в документе`,
       });
+      
+      // Call the onAnalysisComplete callback if it exists
+      if (onAnalysisComplete) {
+        onAnalysisComplete();
+      }
     }, 2000);
   };
 
@@ -126,6 +134,7 @@ const ContractAnalysis = () => {
             <Button
               onClick={handleAnalyzeContract}
               disabled={isAnalyzing}
+              isLoading={isAnalyzing}
             >
               {isAnalyzing ? 'Анализируем...' : 'Проанализировать договор'}
             </Button>
