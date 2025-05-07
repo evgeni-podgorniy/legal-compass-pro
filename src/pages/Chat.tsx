@@ -4,12 +4,15 @@ import { useSearchParams } from 'react-router-dom';
 import MainNavigation from '@/components/MainNavigation';
 import Footer from '@/components/Footer';
 import ChatInterface from '@/components/ChatInterface';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { MessageSquare, HelpCircle, Info, Briefcase, Users, Car, Scale, Landmark, Wifi, WifiOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from '@/hooks/use-toast';
 
 const Chat = () => {
   const [searchParams] = useSearchParams();
+  const { toast } = useToast();
   const initialQuery = searchParams.get('q');
   const category = searchParams.get('category');
   const [categoryInfo, setCategoryInfo] = useState<{title: string; description: string; icon: React.ReactNode} | null>(null);
@@ -17,8 +20,22 @@ const Chat = () => {
   
   // Отслеживаем состояние подключения к интернету
   useEffect(() => {
-    const handleOnline = () => setConnectionStatus('online');
-    const handleOffline = () => setConnectionStatus('offline');
+    const handleOnline = () => {
+      setConnectionStatus('online');
+      toast({
+        title: "Подключение восстановлено",
+        description: "Интернет-соединение восстановлено. Все функции чата доступны."
+      });
+    };
+    
+    const handleOffline = () => {
+      setConnectionStatus('offline');
+      toast({
+        title: "Отсутствует подключение",
+        description: "Работа в автономном режиме. Доступны только базовые ответы.",
+        variant: "destructive"
+      });
+    };
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -27,7 +44,7 @@ const Chat = () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (category) {
@@ -66,6 +83,11 @@ const Chat = () => {
       );
     }
   }, [category]);
+
+  // Функция для переключения категории
+  const handleCategoryChange = (newCategory: string) => {
+    window.location.href = `/chat?category=${newCategory}`;
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -140,6 +162,58 @@ const Chat = () => {
                     )}
                   </div>
                 </CardContent>
+                <CardFooter className="border-t pt-3">
+                  <div className="w-full">
+                    <p className="text-sm font-medium mb-2">Выбрать категорию права:</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleCategoryChange('employment')}
+                        className={category === 'employment' ? 'bg-secondary' : ''}
+                      >
+                        <Briefcase className="h-4 w-4 mr-1" />
+                        Трудовое
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleCategoryChange('family')}
+                        className={category === 'family' ? 'bg-secondary' : ''}
+                      >
+                        <Users className="h-4 w-4 mr-1" />
+                        Семейное
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleCategoryChange('civil')}
+                        className={category === 'civil' ? 'bg-secondary' : ''}
+                      >
+                        <Scale className="h-4 w-4 mr-1" />
+                        Гражданское
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleCategoryChange('auto')}
+                        className={category === 'auto' ? 'bg-secondary' : ''}
+                      >
+                        <Car className="h-4 w-4 mr-1" />
+                        Автомобильное
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleCategoryChange('debt')}
+                        className={category === 'debt' ? 'bg-secondary' : ''}
+                      >
+                        <Landmark className="h-4 w-4 mr-1" />
+                        Долги и кредиты
+                      </Button>
+                    </div>
+                  </div>
+                </CardFooter>
               </Card>
             </div>
           </div>

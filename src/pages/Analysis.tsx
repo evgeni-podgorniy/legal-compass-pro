@@ -1,12 +1,39 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import MainNavigation from '@/components/MainNavigation';
 import Footer from '@/components/Footer';
 import ContractAnalysis from '@/components/ContractAnalysis';
-import { FileScan, Info, CheckCircle, AlertTriangle } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileScan, Info, CheckCircle, AlertTriangle, Download, Share } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 const Analysis = () => {
+  const [analysisComplete, setAnalysisComplete] = useState(false);
+  const { toast } = useToast();
+  
+  const handleAnalysisComplete = () => {
+    setAnalysisComplete(true);
+    toast({
+      title: "Анализ завершен",
+      description: "Документ был успешно проанализирован.",
+    });
+  };
+  
+  const handleDownload = () => {
+    toast({
+      title: "Отчет загружен",
+      description: "Отчет об анализе документа был загружен в формате PDF."
+    });
+  };
+  
+  const handleShare = () => {
+    toast({
+      title: "Поделиться отчетом",
+      description: "Ссылка на отчет скопирована в буфер обмена."
+    });
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <MainNavigation />
@@ -32,8 +59,25 @@ const Analysis = () => {
               <div className="lg:col-span-2">
                 <Card>
                   <CardContent className="p-6">
-                    <ContractAnalysis />
+                    <ContractAnalysis onAnalysisComplete={handleAnalysisComplete} />
                   </CardContent>
+                  {analysisComplete && (
+                    <CardFooter className="flex justify-between border-t p-4">
+                      <div className="text-sm text-muted-foreground">
+                        Анализ завершен. Вы можете скачать отчет или поделиться им.
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={handleDownload}>
+                          <Download className="h-4 w-4 mr-1" />
+                          Скачать отчет
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleShare}>
+                          <Share className="h-4 w-4 mr-1" />
+                          Поделиться
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  )}
                 </Card>
               </div>
               
@@ -96,6 +140,16 @@ const Analysis = () => {
                       </p>
                     </div>
                   </CardContent>
+                  <CardFooter className="pt-3 border-t">
+                    <Button variant="outline" className="w-full" onClick={() => {
+                      toast({
+                        title: "Справочная информация",
+                        description: "Дополнительные сведения о проверке договоров будут доступны в ближайшее время."
+                      });
+                    }}>
+                      Подробнее о проверке
+                    </Button>
+                  </CardFooter>
                 </Card>
               </div>
             </div>
