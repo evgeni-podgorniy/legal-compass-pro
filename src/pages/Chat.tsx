@@ -5,7 +5,7 @@ import MainNavigation from '@/components/MainNavigation';
 import Footer from '@/components/Footer';
 import ChatInterface from '@/components/ChatInterface';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageSquare, HelpCircle, Info, Briefcase, Users, Car, Scale, Landmark } from 'lucide-react';
+import { MessageSquare, HelpCircle, Info, Briefcase, Users, Car, Scale, Landmark, Wifi, WifiOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Chat = () => {
@@ -13,7 +13,7 @@ const Chat = () => {
   const initialQuery = searchParams.get('q');
   const category = searchParams.get('category');
   const [categoryInfo, setCategoryInfo] = useState<{title: string; description: string; icon: React.ReactNode} | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline'>('online');
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline'>(navigator.onLine ? 'online' : 'offline');
   
   // Отслеживаем состояние подключения к интернету
   useEffect(() => {
@@ -22,9 +22,6 @@ const Chat = () => {
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
-    // Установить начальное состояние
-    setConnectionStatus(navigator.onLine ? 'online' : 'offline');
     
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -77,16 +74,31 @@ const Chat = () => {
       <main className="flex-1 py-6 md:py-8 lg:py-10">
         <div className="container px-4 md:px-6">
           <div className="grid gap-6">
-            <div className="flex items-center space-x-2">
-              <MessageSquare className="h-6 w-6 text-legal-primary" />
-              <h1 className="text-2xl font-bold tracking-tight">Юридическая консультация</h1>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <MessageSquare className="h-6 w-6 text-legal-primary" />
+                <h1 className="text-2xl font-bold tracking-tight">Юридическая консультация</h1>
+              </div>
+              <div className="flex items-center">
+                {connectionStatus === 'online' ? (
+                  <div className="flex items-center text-green-500 text-sm">
+                    <Wifi className="h-5 w-5 mr-1" />
+                    <span className="hidden md:inline">Подключено</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center text-orange-500 text-sm">
+                    <WifiOff className="h-5 w-5 mr-1" />
+                    <span className="hidden md:inline">Автономный режим</span>
+                  </div>
+                )}
+              </div>
             </div>
             
             {connectionStatus === 'offline' && (
               <Alert variant="destructive">
                 <AlertTitle>Нет подключения к интернету</AlertTitle>
                 <AlertDescription>
-                  Для корректной работы чата требуется подключение к интернету. Пожалуйста, проверьте ваше соединение.
+                  Чат работает в автономном режиме с ограниченной функциональностью. Доступны только базовые ответы на типичные вопросы.
                 </AlertDescription>
               </Alert>
             )}
@@ -122,7 +134,10 @@ const Chat = () => {
                 <CardContent>
                   <div className="text-sm text-muted-foreground">
                     <p>В случае сложного юридического вопроса, требующего индивидуального подхода, рекомендуем обратиться к профессиональному юристу.</p>
-                    <p className="mt-2">Ответы бота основаны на общих положениях законодательства РФ и могут не учитывать все детали вашей ситуации.</p>
+                    <p className="mt-2">Ответы основаны на общих положениях законодательства РФ и могут не учитывать все детали вашей ситуации.</p>
+                    {connectionStatus === 'offline' && (
+                      <p className="mt-2 text-orange-500">Внимание: в автономном режиме доступны только базовые консультации!</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>

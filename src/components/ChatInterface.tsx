@@ -2,13 +2,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Bot, AlertCircle, Loader2 } from 'lucide-react';
+import { Send, Bot, AlertCircle, Loader2, Wifi, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-// Предустановленный API ключ для демонстрационного доступа
-// В реальном приложении следует использовать серверный API или хранить ключ в безопасном месте
+// Предустановленный API ключ для доступа
 const DEFAULT_API_KEY = "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";
 const PERPLEXITY_API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY || DEFAULT_API_KEY;
 
@@ -24,6 +33,29 @@ interface ChatInterfaceProps {
   initialMessage?: string;
 }
 
+// Локальная база ответов на частые вопросы (для работы без интернет-соединения)
+const offlineResponses: Record<string, string> = {
+  default: "К сожалению, нет подключения к интернету. При отсутствии подключения я могу предоставлять только базовые юридические консультации.",
+  трудовой: "Трудовые отношения регулируются Трудовым кодексом РФ. Основные права работника: оплата труда, отдых, безопасные условия труда. Трудовой договор - основной документ, регулирующий отношения работника и работодателя.",
+  договор: "Договорные отношения регулируются Гражданским кодексом РФ. Для действительности договора необходимо соблюдение формы, дееспособность сторон, законность содержания и соблюдение воли сторон.",
+  наследство: "Наследование регулируется частью 3 Гражданского кодекса РФ. Наследование возможно по закону и по завещанию. Срок принятия наследства - 6 месяцев со дня смерти наследодателя.",
+  штраф: "Штрафы за нарушение ПДД регулируются КоАП РФ. Срок обжалования - 10 дней с момента вынесения постановления. Оплата в течение 20 дней со дня вынесения даёт право на 50% скидку.",
+  развод: "Расторжение брака регламентируется Семейным кодексом РФ. При наличии несовершеннолетних детей или при отсутствии согласия одного из супругов развод производится через суд.",
+  алименты: "Алиментные обязательства регулируются Семейным кодексом РФ. Размер алиментов на несовершеннолетних детей: на 1 ребенка - 1/4, на 2 детей - 1/3, на 3 и более - 1/2 заработка.",
+};
+
+const findOfflineResponse = (query: string): string => {
+  query = query.toLowerCase();
+  
+  for (const [keyword, response] of Object.entries(offlineResponses)) {
+    if (query.includes(keyword.toLowerCase())) {
+      return response;
+    }
+  }
+  
+  return offlineResponses.default;
+};
+
 const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
@@ -38,6 +70,9 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [apiKey, setApiKey] = useState(PERPLEXITY_API_KEY);
   const [networkError, setNetworkError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showOfflineAlert, setShowOfflineAlert] = useState(false);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -50,6 +85,34 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast({
+        title: "Подключение восстановлено",
+        description: "Интернет-соединение восстановлено. Теперь доступны все функции чата.",
+      });
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast({
+        title: "Отсутствует подключение",
+        description: "Работа в автономном режиме. Доступны только базовые ответы.",
+        variant: "destructive"
+      });
+      setShowOfflineAlert(true);
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [toast]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -76,6 +139,25 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
     }
   }, []);
 
+  // Проверка сетевого соединения с сервером API
+  const checkApiConnection = async (): Promise<boolean> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch('https://api.perplexity.ai/healthz', {
+        method: 'GET',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch (error) {
+      console.error('API connection check failed:', error);
+      return false;
+    }
+  };
+
   const getGPTResponse = async (message: string) => {
     // Проверяем наличие API ключа
     if (!apiKey) {
@@ -83,7 +165,19 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
       return 'Пожалуйста, введите ваш API ключ Perplexity AI для использования чата.';
     }
 
-    // Правовой контекст для GPT
+    // Если нет подключения, используем офлайн-ответы
+    if (!isOnline) {
+      return findOfflineResponse(message);
+    }
+
+    // Проверяем соединение с API
+    const isApiAvailable = await checkApiConnection();
+    if (!isApiAvailable) {
+      setNetworkError("Сервер API недоступен. Работаем в автономном режиме.");
+      return findOfflineResponse(message);
+    }
+
+    // Правовой контекст для модели
     const legalContext = `Ты — профессиональный юрист-консультант. Отвечай на вопросы, основываясь на законодательстве РФ. 
     Давай четкие, структурированные ответы с указанием конкретных статей законов. Используй простой язык, понятный неюристам.`;
     
@@ -91,7 +185,7 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
     
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 секунд тайм-аут
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 секунд тайм-аут
       
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
@@ -147,7 +241,8 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
           errorMessage = 'Запрос был отменен из-за превышения времени ожидания. Проверьте ваше интернет-соединение и попробуйте снова.';
         } else if (error.message.includes('Failed to fetch')) {
           setNetworkError('Не удалось подключиться к серверу API. Проверьте ваше интернет-соединение.');
-          errorMessage = 'Не удалось подключиться к серверу API. Проверьте ваше интернет-соединение.';
+          errorMessage = 'Не удалось подключиться к серверу API. Работаем в автономном режиме.';
+          return findOfflineResponse(message);
         }
       }
       
@@ -167,6 +262,7 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setRetryMessage(messageText);
 
     // Добавляем временное сообщение для индикации загрузки
     const loadingMessageId = (Date.now() + 1).toString();
@@ -179,7 +275,7 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
     setMessages(prev => [...prev, loadingMessage]);
 
     try {
-      // Получаем ответ от GPT
+      // Получаем ответ
       const gptResponse = await getGPTResponse(messageText);
 
       // Заменяем временное сообщение на реальный ответ
@@ -193,7 +289,12 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
             }
           : msg
       ));
+      
+      // Сбросить сообщение для повтора после успешного получения ответа
+      setRetryMessage(null);
     } catch (error) {
+      console.error('Error sending message:', error);
+      
       // В случае ошибки показываем сообщение об ошибке вместо загрузки
       setMessages(prev => prev.map(msg => 
         msg.id === loadingMessageId 
@@ -227,6 +328,24 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-13rem)] border rounded-lg overflow-hidden bg-gray-50">
+      {showOfflineAlert && !isOnline && (
+        <AlertDialog open={showOfflineAlert} onOpenChange={setShowOfflineAlert}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Автономный режим</AlertDialogTitle>
+              <AlertDialogDescription>
+                В настоящий момент отсутствует подключение к интернету. Чат будет работать в ограниченном режиме с базовыми ответами на типичные вопросы.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setShowOfflineAlert(false)}>
+                Понятно
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+      
       {showApiKeyInput && (
         <div className="p-4 bg-white border-b">
           <Alert className="mb-4">
@@ -268,6 +387,26 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
           </AlertDescription>
         </Alert>
       )}
+      
+      <div className="flex items-center justify-between p-2 bg-white border-b">
+        <div className="flex items-center space-x-2">
+          <Bot className="h-5 w-5 text-legal-primary" />
+          <span className="text-sm font-medium">Юридический ассистент</span>
+        </div>
+        <div className="flex items-center">
+          {isOnline ? (
+            <div className="flex items-center text-green-500 text-xs">
+              <Wifi className="h-4 w-4 mr-1" />
+              <span>Онлайн</span>
+            </div>
+          ) : (
+            <div className="flex items-center text-orange-500 text-xs">
+              <WifiOff className="h-4 w-4 mr-1" />
+              <span>Офлайн</span>
+            </div>
+          )}
+        </div>
+      </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
