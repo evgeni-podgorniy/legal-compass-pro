@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-// Если вы хотите использовать API непосредственно в приложении,
-// вы можете использовать переменную окружения Vite
-// Для этого создайте файл .env в корне проекта с VITE_PERPLEXITY_API_KEY=ваш_ключ
-const PERPLEXITY_API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY || '';
+// Предустановленный API ключ для демонстрационного доступа
+// В реальном приложении следует использовать серверный API или хранить ключ в безопасном месте
+const DEFAULT_API_KEY = "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";
+const PERPLEXITY_API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY || DEFAULT_API_KEY;
 
 interface Message {
   id: string;
@@ -28,7 +28,7 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: 'Здравствуйте! Я ваш юридический помощник на базе GPT. Чем я могу вам помочь?',
+      content: 'Здравствуйте! Я ваш юридический помощник. Чем я могу вам помочь?',
       sender: 'bot',
     },
   ]);
