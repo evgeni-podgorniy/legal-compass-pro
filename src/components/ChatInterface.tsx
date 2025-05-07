@@ -2,10 +2,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Bot, AlertCircle } from 'lucide-react';
+import { Send, Bot, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Предустановленный API ключ для демонстрационного доступа
 // В реальном приложении следует использовать серверный API или хранить ключ в безопасном месте
@@ -17,6 +17,7 @@ interface Message {
   content: string;
   sender: 'user' | 'bot';
   isLoading?: boolean;
+  error?: boolean;
 }
 
 interface ChatInterfaceProps {
@@ -34,8 +35,9 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(!PERPLEXITY_API_KEY);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [apiKey, setApiKey] = useState(PERPLEXITY_API_KEY);
+  const [networkError, setNetworkError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -85,9 +87,12 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
     const legalContext = `Ты — профессиональный юрист-консультант. Отвечай на вопросы, основываясь на законодательстве РФ. 
     Давай четкие, структурированные ответы с указанием конкретных статей законов. Используй простой язык, понятный неюристам.`;
     
-    const prompt = `${legalContext}\n\nВопрос пользователя: ${message}`;
+    setNetworkError(null);
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 секунд тайм-аут
+      
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
@@ -109,7 +114,10 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
           temperature: 0.2,
           max_tokens: 1000,
         }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -120,6 +128,10 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
           return 'Ошибка аутентификации. Пожалуйста, проверьте ваш API ключ Perplexity AI.';
         }
         
+        if (response.status === 429) {
+          return 'Превышен лимит запросов к API. Пожалуйста, попробуйте позже.';
+        }
+        
         throw new Error(`Ошибка API: ${response.status}`);
       }
 
@@ -127,7 +139,19 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
       return data.choices[0].message.content;
     } catch (error) {
       console.error('Error:', error);
-      return 'Извините, произошла ошибка при обработке вашего запроса. Попробуйте переформулировать вопрос или проверьте ваше интернет-соединение.';
+      
+      let errorMessage = 'Извините, произошла ошибка при обработке вашего запроса.';
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Запрос был отменен из-за превышения времени ожидания. Проверьте ваше интернет-соединение и попробуйте снова.';
+        } else if (error.message.includes('Failed to fetch')) {
+          setNetworkError('Не удалось подключиться к серверу API. Проверьте ваше интернет-соединение.');
+          errorMessage = 'Не удалось подключиться к серверу API. Проверьте ваше интернет-соединение.';
+        }
+      }
+      
+      return errorMessage;
     }
   };
 
@@ -145,33 +169,60 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
     setIsLoading(true);
 
     // Добавляем временное сообщение для индикации загрузки
+    const loadingMessageId = (Date.now() + 1).toString();
     const loadingMessage: Message = {
-      id: (Date.now() + 1).toString(),
+      id: loadingMessageId,
       content: '',
       sender: 'bot',
       isLoading: true,
     };
     setMessages(prev => [...prev, loadingMessage]);
 
-    // Получаем ответ от GPT
-    const gptResponse = await getGPTResponse(messageText);
+    try {
+      // Получаем ответ от GPT
+      const gptResponse = await getGPTResponse(messageText);
 
-    // Заменяем временное сообщение на реальный ответ
-    setMessages(prev => prev.map(msg => 
-      msg.id === loadingMessage.id 
-        ? {
-            id: msg.id,
-            content: gptResponse,
-            sender: 'bot',
-          }
-        : msg
-    ));
-    setIsLoading(false);
+      // Заменяем временное сообщение на реальный ответ
+      setMessages(prev => prev.map(msg => 
+        msg.id === loadingMessageId 
+          ? {
+              id: msg.id,
+              content: gptResponse,
+              sender: 'bot',
+              error: gptResponse.includes('ошибка') || gptResponse.includes('Не удалось')
+            }
+          : msg
+      ));
+    } catch (error) {
+      // В случае ошибки показываем сообщение об ошибке вместо загрузки
+      setMessages(prev => prev.map(msg => 
+        msg.id === loadingMessageId 
+          ? {
+              id: msg.id,
+              content: 'Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте снова.',
+              sender: 'bot',
+              error: true
+            }
+          : msg
+      ));
+      
+      toast({
+        title: "Ошибка соединения",
+        description: "Не удалось получить ответ от сервера. Проверьте подключение к интернету.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSendMessage(input);
+  };
+
+  const handleRetry = (originalMessage: string) => {
+    handleSendMessage(originalMessage);
   };
 
   return (
@@ -199,6 +250,25 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
         </div>
       )}
       
+      {networkError && (
+        <Alert variant="destructive" className="m-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Ошибка сети</AlertTitle>
+          <AlertDescription>
+            {networkError}
+            <div className="mt-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setNetworkError(null)}
+              >
+                Закрыть
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
           <div
@@ -207,21 +277,48 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
               'flex items-start gap-2 rounded-lg p-4',
               message.sender === 'user' 
                 ? 'ml-auto bg-legal-primary text-white max-w-[80%]' 
-                : 'mr-auto bg-white border max-w-[80%]'
+                : message.error 
+                  ? 'mr-auto bg-white border border-red-200 max-w-[80%]'
+                  : 'mr-auto bg-white border max-w-[80%]'
             )}
           >
             {message.sender === 'bot' && (
-              <Bot className="h-5 w-5 mt-1 flex-shrink-0" />
+              <Bot className={cn("h-5 w-5 mt-1 flex-shrink-0", message.error && "text-red-500")} />
             )}
-            <div>
+            <div className="w-full">
               {message.isLoading ? (
-                <div className="flex space-x-2">
-                  <div className="h-2 w-2 rounded-full bg-gray-300 animate-bounce"></div>
-                  <div className="h-2 w-2 rounded-full bg-gray-300 animate-bounce [animation-delay:0.2s]"></div>
-                  <div className="h-2 w-2 rounded-full bg-gray-300 animate-bounce [animation-delay:0.4s]"></div>
+                <div className="flex space-x-2 items-center">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-gray-500">Обработка запроса...</span>
                 </div>
               ) : (
                 <div className="whitespace-pre-wrap">{message.content}</div>
+              )}
+              
+              {message.error && !message.isLoading && (
+                <div className="mt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      // Находим сообщение пользователя перед этим сообщением с ошибкой
+                      const index = messages.findIndex(m => m.id === message.id);
+                      if (index > 0) {
+                        const userMessage = messages
+                          .slice(0, index)
+                          .reverse()
+                          .find(m => m.sender === 'user');
+                        
+                        if (userMessage) {
+                          handleRetry(userMessage.content);
+                        }
+                      }
+                    }}
+                    className="text-xs"
+                  >
+                    Повторить запрос
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -240,8 +337,16 @@ const ChatInterface = ({ initialMessage }: ChatInterfaceProps) => {
           className="flex-1 mr-2"
           disabled={isLoading || showApiKeyInput}
         />
-        <Button type="submit" size="icon" disabled={isLoading || !input.trim() || showApiKeyInput}>
-          <Send className="h-4 w-4" />
+        <Button 
+          type="submit"
+          size="icon" 
+          disabled={isLoading || !input.trim() || showApiKeyInput}
+        >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
         </Button>
       </form>
     </div>

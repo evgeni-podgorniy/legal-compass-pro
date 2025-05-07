@@ -13,6 +13,24 @@ const Chat = () => {
   const initialQuery = searchParams.get('q');
   const category = searchParams.get('category');
   const [categoryInfo, setCategoryInfo] = useState<{title: string; description: string; icon: React.ReactNode} | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline'>('online');
+  
+  // Отслеживаем состояние подключения к интернету
+  useEffect(() => {
+    const handleOnline = () => setConnectionStatus('online');
+    const handleOffline = () => setConnectionStatus('offline');
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Установить начальное состояние
+    setConnectionStatus(navigator.onLine ? 'online' : 'offline');
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (category) {
@@ -63,6 +81,15 @@ const Chat = () => {
               <MessageSquare className="h-6 w-6 text-legal-primary" />
               <h1 className="text-2xl font-bold tracking-tight">Юридическая консультация</h1>
             </div>
+            
+            {connectionStatus === 'offline' && (
+              <Alert variant="destructive">
+                <AlertTitle>Нет подключения к интернету</AlertTitle>
+                <AlertDescription>
+                  Для корректной работы чата требуется подключение к интернету. Пожалуйста, проверьте ваше соединение.
+                </AlertDescription>
+              </Alert>
+            )}
             
             {categoryInfo && (
               <Card>
