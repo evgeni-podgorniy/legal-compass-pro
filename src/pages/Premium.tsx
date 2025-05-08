@@ -10,6 +10,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
 
+// Define TypeScript interfaces for subscription plans
+interface BasicPlan {
+  id: string;
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+  isPopular: boolean;
+  buttonText: string;
+}
+
+interface PremiumPlan extends BasicPlan {
+  originalPrice?: string;
+  discount?: string;
+}
+
 const Premium = () => {
   const navigate = useNavigate();
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
@@ -17,7 +34,7 @@ const Premium = () => {
   const [paymentStep, setPaymentStep] = useState<boolean>(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'sbp' | null>(null);
 
-  const monthlySubscriptionPlans = [
+  const monthlySubscriptionPlans: BasicPlan[] = [
     {
       id: 'basic',
       name: 'Базовый',
@@ -68,7 +85,7 @@ const Premium = () => {
     }
   ];
 
-  const yearlySubscriptionPlans = [
+  const yearlySubscriptionPlans: PremiumPlan[] = [
     {
       id: 'basic',
       name: 'Базовый',
@@ -207,7 +224,7 @@ const Premium = () => {
                         <span className="text-3xl font-bold">{plan.price}</span>
                         <span className="text-muted-foreground ml-1">{plan.period}</span>
                       </div>
-                      {plan.originalPrice && (
+                      {'originalPrice' in plan && plan.originalPrice && (
                         <div className="mt-1">
                           <span className="text-muted-foreground line-through text-sm">{plan.originalPrice}</span>
                           <span className="ml-2 text-green-600 text-sm font-medium">{plan.discount}</span>

@@ -15,31 +15,40 @@ import SubscriptionBanner from "./components/SubscriptionBanner";
 import { useSubscription } from "./context/SubscriptionContext";
 import './styles/premium.css';
 
+// Create a new query client instance
 const queryClient = new QueryClient();
 
-const App = () => {
+const AppContent = () => {
   const { isPremium, subscriptionTier, daysLeft } = useSubscription();
 
+  return (
+    <>
+      <BackButton />
+      <SubscriptionBanner 
+        isPremium={isPremium}
+        subscriptionTier={subscriptionTier || ''}
+        daysLeft={daysLeft}
+      />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/chat" element={<Chat />} />
+        <Route path="/documents" element={<Documents />} />
+        <Route path="/analysis" element={<Analysis />} />
+        <Route path="/premium" element={<Premium />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+};
+
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <BackButton />
-          <SubscriptionBanner 
-            isPremium={isPremium}
-            subscriptionTier={subscriptionTier || ''}
-            daysLeft={daysLeft}
-          />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/documents" element={<Documents />} />
-            <Route path="/analysis" element={<Analysis />} />
-            <Route path="/premium" element={<Premium />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AppContent />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
