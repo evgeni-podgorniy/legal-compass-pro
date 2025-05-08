@@ -224,10 +224,13 @@ const Premium = () => {
                         <span className="text-3xl font-bold">{plan.price}</span>
                         <span className="text-muted-foreground ml-1">{plan.period}</span>
                       </div>
-                      {'originalPrice' in plan && plan.originalPrice && (
+                      {/* Fix the TypeScript error by properly typing the conditional */}
+                      {billingPeriod === 'yearly' && 'originalPrice' in plan && plan.originalPrice && (
                         <div className="mt-1">
                           <span className="text-muted-foreground line-through text-sm">{plan.originalPrice}</span>
-                          <span className="ml-2 text-green-600 text-sm font-medium">{plan.discount}</span>
+                          {plan.discount && (
+                            <span className="ml-2 text-green-600 text-sm font-medium">{plan.discount}</span>
+                          )}
                         </div>
                       )}
                       <p className="text-muted-foreground mt-2">{plan.description}</p>
