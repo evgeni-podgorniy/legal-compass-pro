@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { CapacitorHttp } from '@capacitor/core';
+import { SubscriptionProvider } from './context/SubscriptionContext';
 
 // Полифилл для fetch API, чтобы использовать CapacitorHttp на мобильных устройствах
 const originalFetch = window.fetch;
@@ -39,4 +40,8 @@ window.fetch = async function(input: RequestInfo | URL, init?: RequestInit) {
   }
 };
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <SubscriptionProvider>
+    <App />
+  </SubscriptionProvider>
+);
