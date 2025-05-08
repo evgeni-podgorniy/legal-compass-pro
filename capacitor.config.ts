@@ -6,7 +6,8 @@ const config: CapacitorConfig = {
   appName: 'Правовой Компас',
   webDir: 'dist',
   server: {
-    url: 'https://8dd304f0-898e-4e1f-ad27-7e7205677a58.lovableproject.com?forceHideBadge=true',
+    androidScheme: 'https',
+    hostname: '8dd304f0-898e-4e1f-ad27-7e7205677a58.lovableproject.com',
     cleartext: true
   },
   android: {
